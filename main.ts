@@ -100,22 +100,108 @@ export default class EasyHighlight extends Plugin {
 			} else {
 				// Count the number of <mark> elements in the file
 				const markCount = this.countMarkElements(view);
-				const colorIndex = markCount % this.settings.colors.length; // Ensure we stay within bounds
+				const indexOffset = this.getColorIndexOffset(view);				
+				const colorIndex = indexOffset + markCount % this.settings.colors.length; // Ensure we stay within bounds
+				
 				const highlightColor = this.settings.colors[colorIndex]; // Select color based on mark count
-	
-				const highlightedText = `<mark style="background-color: ${highlightColor};">${selectedText}</mark>`;
-				editor.replaceSelection(highlightedText); // Apply new highlight
+				
+
+				if (markCount === 0) {
+					const highlightedText = `<mark highlightindex="${indexOffset}" style="background-color: ${highlightColor};">${selectedText}</mark>`;
+					editor.replaceSelection(highlightedText); // Apply new highlight
+
+				} else {
+					const highlightedText = `<mark style="background-color: ${highlightColor};">${selectedText}</mark>`;
+					editor.replaceSelection(highlightedText); // Apply new highlight
+
+				}
 			}
 		}
+		
+	}
+	
+	getRandomBetween(min: number, max: number): number {
+		return Math.floor(Math.random() * (max - min + 1)) + min;
 	}
 	
 
 	// Function to count the <mark> elements in the active file
 	private countMarkElements(view: MarkdownView): number {
 		const content = view.data;
+		
 		const markElements = content.match(/<mark[^>]*>(.*?)<\/mark>/g); // Match all <mark> elements
 		return markElements ? markElements.length : 0; // Return the count or 0 if none found
 	}
+
+	private getColorIndexOffset(view: MarkdownView): number  {
+		const editor = view.editor;
+		const content = editor.getValue(); // Get the entire content of the current file
+	
+		// Regular expression to find the first <mark> element with a highlightindex attribute
+		const markRegex = /<mark[^>]*highlightindex=["']?(\d+)["']?[^>]*>/;
+	
+		const match = markRegex.exec(content);
+	
+		if (match && match[1]) {
+			return parseInt(match[1], 10) | 0; // Return the highlightindex value as a number
+		}
+		
+		return this.getRandomBetween(0, this.settings.colors.length);
+
+	}
+	
+
+	rgbToHex({ r, g, b }: { r: number, g: number, b: number }): string {
+		const toHex = (c: number) => c.toString(16).padStart(2, '0');
+		return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+	}
+	
+	hexToRGB(hex: string): { r: number, g: number, b: number } {
+		let trimmedHex = hex.replace(/^#/, '');
+	
+		if (trimmedHex.length === 3) {
+			trimmedHex = trimmedHex.split('').map(c => c + c).join('');
+		}
+	
+		const bigint = parseInt(trimmedHex, 16);
+		return {
+			r: (bigint >> 16) & 255,
+			g: (bigint >> 8) & 255,
+			b: bigint & 255,
+		};
+	}
+	
+	rgbToHue({ r, g, b }: { r: number, g: number, b: number }): number {
+		const rr = r / 255, gg = g / 255, bb = b / 255;
+		const max = Math.max(rr, gg, bb), min = Math.min(rr, gg, bb);
+		let h = 0;
+	
+		if (max === min) {
+			h = 0;
+		} else if (max === rr) {
+			h = (60 * ((gg - bb) / (max - min)) + 360) % 360;
+		} else if (max === gg) {
+			h = (60 * ((bb - rr) / (max - min)) + 120) % 360;
+		} else if (max === bb) {
+			h = (60 * ((rr - gg) / (max - min)) + 240) % 360;
+		}
+	
+		return h;
+	}
+	
+	sortColorsByBlueToRed(colors: string[]): string[] {
+		return colors
+			.map(hex => ({ hex, rgb: this.hexToRGB(hex) })) // Convert to RGB
+			.sort((colorA, colorB) => {
+				const hueA = this.rgbToHue(colorA.rgb);
+				const hueB = this.rgbToHue(colorB.rgb);
+	
+				// Sort by hue descending to go from blue (240) to red (0 or 360)
+				return hueB - hueA;
+			})
+			.map(color => this.rgbToHex(color.rgb)); // Convert back to hex
+	}
+	
 }
 
 class EasyHighlightSettingTab extends PluginSettingTab {
@@ -131,20 +217,18 @@ class EasyHighlightSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 
-		containerEl.createEl('h2', { text: 'EasyHighlight Settings' });
+		containerEl.createEl('h2', { text: 'Easy Highlight Settings' });
 
 		// Add the button to add a new color at the top
 		new Setting(containerEl)
 			.setName('Add New Color')
 			.addButton((button) => {
 				button.setButtonText('Add').setCta().onClick(async () => {
-					const color = prompt("Enter a color (hex format, e.g., #ff0000):", "#ffffff");
-					if (color) {
-						this.plugin.settings.colors.push(color);  // Add new color
-						this.plugin.settings.colors.sort(); // Sort colors in ascending order
-						await this.plugin.saveSettings();
-						this.display();  // Re-render the settings
-					}
+					this.plugin.settings.colors.push("#ffffff");  // Add new color
+					this.plugin.settings.colors = this.plugin.sortColorsByBlueToRed(this.plugin.settings.colors)
+					await this.plugin.saveSettings();
+					this.display();  // Re-render the settings
+					
 				});
 			});
 
