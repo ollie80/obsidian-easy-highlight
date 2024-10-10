@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-sample-plugin",
+	"name": "easy-highlight",
 	"version": "1.0.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"description": "A simpler way to add highlights to your documents.",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
