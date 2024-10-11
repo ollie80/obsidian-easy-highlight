@@ -146,7 +146,7 @@ export default class EasyHighlight extends Plugin {
 			return parseInt(match[1], 10) | 0; // Return the highlightindex value as a number
 		}
 		
-		return this.getRandomBetween(0, this.settings.colors.length);
+		return this.getRandomBetween(0, this.settings.colors.length - 1);
 
 	}
 	
