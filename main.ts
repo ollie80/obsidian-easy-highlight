@@ -7,7 +7,17 @@ interface EasyHighlightSettings {
 
 // Default settings
 const DEFAULT_SETTINGS: EasyHighlightSettings = {
-	colors: [],
+	colors: ["#ed8796",
+    "#c6a0f6",
+    "#b7bdf8",
+    "#8aadf4",
+    "#7dc4e4",
+    "#91d7e3",
+    "#8bd5ca",
+    "#a6da95",
+    "#eed49f",
+    "#f5a97f",
+    "#f0c6c6"],
 };
 
 export default class EasyHighlight extends Plugin {
@@ -101,7 +111,7 @@ export default class EasyHighlight extends Plugin {
 				// Count the number of <mark> elements in the file
 				const markCount = this.countMarkElements(view);
 				const indexOffset = this.getColorIndexOffset(view);				
-				const colorIndex = indexOffset + markCount % this.settings.colors.length; // Ensure we stay within bounds
+				const colorIndex = indexOffset + markCount % this.settings.colors.length - 1; // Ensure we stay within bounds
 				
 				const highlightColor = this.settings.colors[colorIndex]; // Select color based on mark count
 				
